@@ -11,6 +11,6 @@ export default withAuth({
 // The `matcher` specifies which routes this middleware should run on.
 export const config = {
   matcher: [
-    '/dashboard/:path*', // Protect all routes under /dashboard
+    '/dashboard/:path*',
   ],
 };
