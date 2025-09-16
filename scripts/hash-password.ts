@@ -1,8 +1,9 @@
 // scripts/hashPassword
 import bcrypt from 'bcrypt';
 import { argv } from 'process';
-export async function hashPassword(password:string) {
-  const saltRounds = 10; // Adjust this value for desired hashing strength
+
+export async function hashPassword(password:string): Promise<string> {
+  const saltRounds = 10;
   const salt = await bcrypt.genSalt(saltRounds);
   return await bcrypt.hash(password, salt);
 }
