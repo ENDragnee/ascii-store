@@ -73,9 +73,10 @@ model Currency {
 }
 
 model Orders {
-  id            String         @id @default(cuid())
+  id            String          @id @default(cuid())
   userId        String
-  user          User           @relation(fields: [userId], references: [id])
+  user          User            @relation(fields: [userId], references: [id])
+  orderCode     String          @unique
 
   orderProducts OrderProduct[]
   transactions  Transaction[]
