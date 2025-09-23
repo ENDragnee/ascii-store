@@ -1,138 +1,239 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
+'use client';
+
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import axios from 'axios';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+
+// Define types for the API response
+interface Order {
+  id: string;
+  orderCode: string;
+  total: number;
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  user: {
+    name: string | null;
+    email: string | null;
+    userProfile: {
+      avatarUrl: string | null;
+    } | null;
+  };
+  orderProducts: {
+    product: {
+      name: string;
+      media: { url: string }[];
+    };
+  }[];
+}
+
+interface ApiResponse {
+  data: Order[];
+  pagination: {
+    totalOrders: number;
+    totalPages: number;
+    currentPage: number;
+    hasNextPage: boolean;
+  };
+}
+
+// Helper to fetch orders
+const fetchOrders = async (
+  page: number,
+  limit: number,
+  sortBy: string,
+  sortOrder: 'asc' | 'desc'
+): Promise<ApiResponse> => {
+  const { data } = await axios.get('/api/orders', {
+    params: { page, limit, sortBy, sortOrder },
+  });
+  return data;
+};
+
+// Badge color mapping based on status and theme
+const getStatusBadgeVariant = (
+  status: Order['status']
+): 'default' | 'destructive' | 'secondary' | 'outline' => {
+  switch (status) {
+    case 'COMPLETED':
+      return 'default'; // Uses success color via globals.css
+    case 'CANCELLED':
+      return 'destructive';
+    case 'PENDING':
+      return 'secondary';
+    default:
+      return 'outline';
+  }
+};
 
 export function OrdersTable() {
-  const orders = [
-    {
-      id: "#ORD-20250916-01",
-      product: {
-        name: "Blue T-shirt",
-        variant: "Size L",
-        image: "/blue-t-shirt.png",
-      },
-      buyer: "+2519XXXXXXX",
-      amount: "ETB 1,500",
-      status: "PAID_HELD",
-      statusColor: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    },
-    {
-      id: "#ORD-20250915-43",
-      product: {
-        name: "Red Mug",
-        variant: "Ceramic",
-        image: "/red-ceramic-mug.jpg",
-      },
-      buyer: "+2519YYYYYYY",
-      amount: "ETB 450",
-      status: "COMPLETED",
-      statusColor: "bg-green-100 text-green-800 border-green-200",
-    },
-    {
-      id: "#ORD-20250915-42",
-      product: {
-        name: "Black Hoodie",
-        variant: "Size M",
-        image: "/black-hoodie.png",
-      },
-      buyer: "+2519ZZZZZZZ",
-      amount: "ETB 2,200",
-      status: "PENDING",
-      statusColor: "bg-blue-100 text-blue-800 border-blue-200",
-    },
-    {
-      id: "#ORD-20250914-38",
-      product: {
-        name: "Green Cap",
-        variant: "Adjustable",
-        image: "/green-baseball-cap.jpg",
-      },
-      buyer: "+2519AAAAAAA",
-      amount: "ETB 800",
-      status: "SHIPPED",
-      statusColor: "bg-purple-100 text-purple-800 border-purple-200",
-    },
-    {
-      id: "#ORD-20250914-37",
-      product: {
-        name: "White Sneakers",
-        variant: "Size 42",
-        image: "/white-sneakers.png",
-      },
-      buyer: "+2519BBBBBBB",
-      amount: "ETB 3,200",
-      status: "PROCESSING",
-      statusColor: "bg-orange-100 text-orange-800 border-orange-200",
-    },
-  ]
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [sortConfig, setSortConfig] = useState<{
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }>({ sortBy: 'createdAt', sortOrder: 'desc' });
+
+  const { data, isLoading, isError, error } = useQuery<ApiResponse, Error>({
+    queryKey: ['orders', page, limit, sortConfig.sortBy, sortConfig.sortOrder],
+    queryFn: () =>
+      fetchOrders(page, limit, sortConfig.sortBy, sortConfig.sortOrder),
+    // Corrected: In TanStack Query v5, `keepPreviousData` is now `placeholderData`
+    placeholderData: keepPreviousData,
+  });
+
+  const handleSort = (column: string) => {
+    setSortConfig((prev) => ({
+      sortBy: column,
+      sortOrder: prev.sortBy === column && prev.sortOrder === 'desc' ? 'asc' : 'desc',
+    }));
+  };
+
+  const SortableHeader = ({
+    column,
+    children,
+  }: {
+    column: string;
+    children: React.ReactNode;
+  }) => (
+    <TableHead>
+      <Button
+        variant="ghost"
+        onClick={() => handleSort(column)}
+        className="px-0 hover:bg-transparent"
+      >
+        {children}
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    </TableHead>
+  );
 
   return (
-    <Card className="bg-white shadow-sm border border-gray-200">
-      <CardHeader className="border-b border-gray-100">
+    <Card>
+      <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900">Recent Orders</CardTitle>
-          <p className="text-sm text-gray-500">Showing 1-5 of 42 orders</p>
+          <CardTitle>Recent Orders</CardTitle>
+          {data && (
+            <p className="text-sm text-muted-foreground">
+              {/* Corrected: Safely access pagination properties */}
+              Showing {((data.pagination.currentPage - 1) * limit) + 1}-
+              {Math.min(data.pagination.currentPage * limit, data.pagination.totalOrders)} of {data.pagination.totalOrders} orders
+            </p>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left py-3 px-6 text-sm font-medium text-gray-600">Order ID</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-gray-600">Product</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-gray-600">Buyer Phone</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-gray-600">Amount</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-gray-600">Status</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-gray-600">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order, index) => (
-                <tr
-                  key={index}
-                  className={cn(
-                    "border-b border-gray-100 hover:bg-gray-50 transition-colors",
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50",
-                  )}
-                >
-                  <td className="py-4 px-6">
-                    <div className="font-medium text-gray-900">{order.id}</div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10 rounded-lg">
-                        <AvatarImage src={order.product.image || "/placeholder.svg"} alt={order.product.name} />
-                        <AvatarFallback className="rounded-lg bg-gray-100">
-                          {order.product.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium text-gray-900">{order.product.name}</div>
-                        <div className="text-sm text-gray-500">{order.product.variant}</div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableHeader column="orderCode">Order ID</SortableHeader>
+                <TableHead>Product</TableHead>
+                <SortableHeader column="user">Buyer</SortableHeader>
+                <SortableHeader column="total">Amount</SortableHeader>
+                <SortableHeader column="status">Status</SortableHeader>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">
+                    Loading...
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-destructive">
+                    Error: {error.message}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // Corrected: Safely map over data and provide type for 'order'
+                data?.data.map((order: Order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">{order.orderCode}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                         <Avatar className="h-10 w-10 rounded-lg">
+                          <AvatarImage 
+                            src={order.orderProducts[0]?.product.media[0]?.url || ''} 
+                            alt={order.orderProducts[0]?.product.name} 
+                          />
+                          <AvatarFallback className="rounded-lg">
+                            {order.orderProducts[0]?.product.name?.charAt(0) || 'P'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">
+                            {order.orderProducts[0]?.product.name || 'N/A'}
+                            {order.orderProducts.length > 1 && ` + ${order.orderProducts.length - 1} more`}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-gray-900">{order.buyer}</td>
-                  <td className="py-4 px-6 font-semibold text-gray-900">{order.amount}</td>
-                  <td className="py-4 px-6">
-                    <Badge variant="outline" className={cn("font-medium", order.statusColor)}>
-                      {order.status}
-                    </Badge>
-                  </td>
-                  <td className="py-4 px-6">
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-                      View
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </TableCell>
+                    <TableCell>{order.user.name || 'N/A'}</TableCell>
+                    <TableCell className="font-semibold">
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'ETB' }).format(order.total)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(order.status)}>
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm">
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+            disabled={page === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Previous</span>
+          </Button>
+          <span className='text-sm text-muted-foreground'>
+            {/* Corrected: Safely access pagination properties */}
+            Page {data?.pagination.currentPage ?? 1} of {data?.pagination.totalPages ?? 1}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((prev) => prev + 1)}
+            // Corrected: Safely access hasNextPage
+            disabled={!data?.pagination.hasNextPage}
+          >
+            <span className="sr-only">Next</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

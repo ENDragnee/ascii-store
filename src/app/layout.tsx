@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/sidebar"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ReactQueryProviders } from "@/providers/react-query-provider"
 import "./globals.css"
 
 const inter = Inter({
@@ -25,22 +26,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
+      <ReactQueryProviders>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <Suspense fallback={<div>Loading...</div>}>
               <div className="min-h-screen bg-bg flex">
-
-                <Sidebar />
-                <div className="flex-1 flex flex-col">
-
-                  <DashboardHeader />
                   <main className="flex-1 p-6">
                     <div className="max-w-[1400px] mx-auto">{children}</div>
                   </main>
-                </div>
               </div>
             </Suspense>
           </ThemeProvider>
+      </ReactQueryProviders>
       </body>
     </html>
   )
